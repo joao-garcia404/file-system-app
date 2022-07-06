@@ -40,7 +40,6 @@ function App() {
 
   async function handleDownloadFile() {
     try {
-      const permission = await navigator.permissions.query({ name: 'geolocation' })
       const response = await axios.get(FILE_LINK, { responseType: 'blob' });
       const fileUrl = window.URL.createObjectURL(new Blob([response.data]));
 
@@ -73,9 +72,9 @@ function App() {
       const streamObject = fileBlob
         .stream()
         .pipeThrough(new TextDecoderStream())
-        .pipeThrough(
-          new TransformStream()
-        )
+        // .pipeThrough(
+        //   new TransformStream()
+        // )
         .getReader()
       
       setGCode(streamObject);
