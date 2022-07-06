@@ -1,0 +1,25 @@
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  font-family: sans-serif;
+}
+
+body {
+  height: 100%;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app_container {
+  padding: 30px;
+}
+
+.file_download {
+  width: 200px;
+  height: 42px;
+
+  margin-top: 40px;
+}
