@@ -5,8 +5,6 @@ import axios from 'axios';
 const FILE_LINK = 'https://plin-condominios.s3.sa-east-1.amazonaws.com/44f0f06be281c605c7af2ed65cec48e1-RINGFIX_AMOSTRA.gcode'
 
 function App() {
-  const [gCode, setGCode] = useState<ReadableStreamDefaultReader<string>>();
-
   // async function downloadWritableFile(blob) {
   //   try {
   //     const handle = await window.showSaveFilePicker({
@@ -43,49 +41,43 @@ function App() {
       const response = await axios.get(FILE_LINK, { responseType: 'blob' });
       const fileUrl = window.URL.createObjectURL(new Blob([response.data]));
 
-      getFileStream(response.data, fileUrl);
+      handleSaveFile(response.data)
 
-      console.log(permission)
     } catch (error) {
       console.log(error);
     }
   }
 
-  async function readGCode() {
+  async function handleSaveFile(fileBlob: Blob) {
     try {
-      const { value } = await gCode?.read()!;
+      // // create a new handle
+      // const newHandle = await window.showSaveFilePicker();
+    
+      // // create a FileSystemWritableFileStream to write to
+      // const writableStream = await newHandle.createWritable();
+    
+      // // write our file
+      // await writableStream.write(fileBlob);
+    
+      // // close the file and write the contents to disk.
+      // await writableStream.close();
 
-      const gCodeLines = value?.split(';');
+      const root = await navigator.storage.getDirectory();
 
-      console.log(value)
+      const tmpFolder = await root.getDirectoryHandle('tmpFixitFolder', { create: true });
+      const tmpFile = await tmpFolder.getFileHandle('tmpFixitFile.txt', { create: true });
 
-      if (gCodeLines) {
-        gCodeLines.map((instruction) => console.log(instruction));
-      }
+
+      const file = await tmpFile.getFile();
+
+      console.log(file);
+      console.log(root)
+      console.log(tmpFolder)
+      console.log(tmpFile);
     } catch (error) {
       console.log(error);
     }
   }
-
-  async function getFileStream(fileBlob: Blob, fileUrl: string) {
-    try {
-      const streamObject = fileBlob
-        .stream()
-        .pipeThrough(new TextDecoderStream())
-        // .pipeThrough(
-        //   new TransformStream()
-        // )
-        .getReader()
-      
-      setGCode(streamObject);
-    } catch (error) {
-      console.log(error);
-    }
-  }
-
-  useEffect(() => {
-    if (gCode) readGCode();
-  }, [gCode]);
 
   return (
     <div className='app_container'>
