@@ -41,14 +41,14 @@ function App() {
       const response = await axios.get(FILE_LINK, { responseType: 'blob' });
       const fileUrl = window.URL.createObjectURL(new Blob([response.data]));
 
-      handleSaveFile(response.data)
+      // handleSaveFile(response.data)
 
     } catch (error) {
       console.log(error);
     }
   }
 
-  async function handleSaveFile(fileBlob: Blob) {
+  async function handleSaveFile() {
     try {
       // // create a new handle
       // const newHandle = await window.showSaveFilePicker();
@@ -65,15 +65,19 @@ function App() {
       const root = await navigator.storage.getDirectory();
 
       const tmpFolder = await root.getDirectoryHandle('tmpFixitFolder', { create: true });
-      const tmpFile = await tmpFolder.getFileHandle('tmpFixitFile.txt', { create: true });
+      const tmpFile = await tmpFolder.getFileHandle('fixitgcode.gcode', { create: true });
 
+      const fileHandle = await tmpFile.createWritable();
+      const response = await fetch(FILE_LINK);
+     
+      await response.body?.pipeTo(fileHandle);
 
       const file = await tmpFile.getFile();
 
+      const fileDirectory = await tmpFolder.resolve(tmpFile);
+
+      console.log(fileDirectory);
       console.log(file);
-      console.log(root)
-      console.log(tmpFolder)
-      console.log(tmpFile);
     } catch (error) {
       console.log(error);
     }
@@ -83,7 +87,7 @@ function App() {
     <div className='app_container'>
       <h1>File system</h1>
 
-      <button type="button" className="file_download" onClick={handleDownloadFile}>
+      <button type="button" className="file_download" onClick={handleSaveFile}>
         Fazer dowload do arquivo
       </button>
     </div>
