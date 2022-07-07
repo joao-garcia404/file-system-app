@@ -48,6 +48,24 @@ function App() {
     }
   }
 
+  async function handleGetFile() {
+    try {
+      const root = await navigator.storage.getDirectory();
+
+      const dirHandle = await root.getDirectoryHandle('tmpFixitFolder', { create: false });
+      const fileHandle = await dirHandle.getFileHandle('fixitgcode.gcode', { create: false });
+
+      const file = await fileHandle.getFile();
+
+      const filePath = await dirHandle.resolve(fileHandle);
+
+      console.log(filePath);
+      console.log(file);
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
   async function handleSaveFile() {
     try {
       const root = await navigator.storage.getDirectory();
@@ -59,13 +77,6 @@ function App() {
       const response = await fetch(FILE_LINK);
      
       await response.body?.pipeTo(writable);
-
-      const file = await fileHandle.getFile();
-
-      const filePath = await dirHandle.resolve(fileHandle);
-
-      console.log(filePath);
-      console.log(file);
     } catch (error) {
       console.log(error);
     }
@@ -77,6 +88,10 @@ function App() {
 
       <button type="button" className="file_download" onClick={handleSaveFile}>
         Fazer dowload do arquivo
+      </button>
+
+      <button type="button" className="file_download" onClick={handleGetFile}>
+        Carregar arquivo
       </button>
     </div>
   )
