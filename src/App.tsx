@@ -56,11 +56,17 @@ function App() {
       const fileHandle = await dirHandle.getFileHandle('fixitgcode.gcode', { create: false });
 
       const file = await fileHandle.getFile();
-
       const filePath = await dirHandle.resolve(fileHandle);
+      
+      const reader = new FileReader();
+      reader.readAsText(file, "UTF-8");
+      reader.onload = (evt) => {
+        console.log(evt?.target?.result);
+      };
 
       console.log(filePath);
       console.log(file);
+      console.log(reader);
     } catch (error) {
       console.log(error)
     }
