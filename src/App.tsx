@@ -5,24 +5,6 @@ import axios from 'axios';
 const FILE_LINK = 'https://plin-condominios.s3.sa-east-1.amazonaws.com/44f0f06be281c605c7af2ed65cec48e1-RINGFIX_AMOSTRA.gcode'
 
 function App() {
-  // async function downloadWritableFile(blob) {
-  //   try {
-  //     const handle = await window.showSaveFilePicker({
-  //       types: [{
-  //         accept: {
-  //           // Omitted
-  //         },
-  //       }],
-  //     });
-
-  //     const writable = await handle.createWritable();
-  //     await writable.write(blob);
-  //     await writable.close();
-  //   } catch (error) {
-  //     console.log(error);
-  //   }
-  // }
-
   async function verifyDiskSpace() {
     if (navigator.storage && navigator.storage.estimate) {
       const quota = await navigator.storage.estimate();
@@ -58,21 +40,16 @@ function App() {
       const file = await fileHandle.getFile();
       const filePath = await dirHandle.resolve(fileHandle);
 
-      const fileStream = await file.stream().getReader().read();
+      const decoder = new TextDecoder();
+      const queuingStrategy = new CountQueuingStrategy({ highWaterMark: 1 });
+      const writableStream = new WritableStream({
+        write: (chunk) => {
+          console.log(chunk);
+        },
+      });
 
-      // const reader = new FileReader();
-      // reader.readAsText(file, "UTF-8");
-      // reader.onload = (evt) => {
-      //   console.log(evt?.target?.result);
-      // };
+      const fileStream = file.stream().pipeThrough(new TextDecoderStream()).pipeTo(writableStream);
 
-      // reader.readAsDataURL(file);
-      // reader.onload = (event) => {
-      //   console.log(event.target?.result);
-      // }
-
-      console.log(filePath);
-      console.log(file);
       console.log(fileStream);
     } catch (error) {
       console.log(error)
