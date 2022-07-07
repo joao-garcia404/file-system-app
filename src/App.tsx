@@ -57,16 +57,23 @@ function App() {
 
       const file = await fileHandle.getFile();
       const filePath = await dirHandle.resolve(fileHandle);
-      
-      const reader = new FileReader();
-      reader.readAsText(file, "UTF-8");
-      reader.onload = (evt) => {
-        console.log(evt?.target?.result);
-      };
+
+      const fileStream = await file.stream().getReader().read();
+
+      // const reader = new FileReader();
+      // reader.readAsText(file, "UTF-8");
+      // reader.onload = (evt) => {
+      //   console.log(evt?.target?.result);
+      // };
+
+      // reader.readAsDataURL(file);
+      // reader.onload = (event) => {
+      //   console.log(event.target?.result);
+      // }
 
       console.log(filePath);
       console.log(file);
-      console.log(reader);
+      console.log(fileStream);
     } catch (error) {
       console.log(error)
     }
