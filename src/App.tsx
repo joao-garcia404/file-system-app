@@ -50,33 +50,21 @@ function App() {
 
   async function handleSaveFile() {
     try {
-      // // create a new handle
-      // const newHandle = await window.showSaveFilePicker();
-    
-      // // create a FileSystemWritableFileStream to write to
-      // const writableStream = await newHandle.createWritable();
-    
-      // // write our file
-      // await writableStream.write(fileBlob);
-    
-      // // close the file and write the contents to disk.
-      // await writableStream.close();
-
       const root = await navigator.storage.getDirectory();
 
-      const tmpFolder = await root.getDirectoryHandle('tmpFixitFolder', { create: true });
-      const tmpFile = await tmpFolder.getFileHandle('fixitgcode.gcode', { create: true });
+      const dirHandle = await root.getDirectoryHandle('tmpFixitFolder', { create: true });
+      const fileHandle = await dirHandle.getFileHandle('fixitgcode.gcode', { create: true });
 
-      const fileHandle = await tmpFile.createWritable();
+      const writable = await fileHandle.createWritable();
       const response = await fetch(FILE_LINK);
      
-      await response.body?.pipeTo(fileHandle);
+      await response.body?.pipeTo(writable);
 
-      const file = await tmpFile.getFile();
+      const file = await fileHandle.getFile();
 
-      const fileDirectory = await tmpFolder.resolve(tmpFile);
+      const filePath = await dirHandle.resolve(fileHandle);
 
-      console.log(fileDirectory);
+      console.log(filePath);
       console.log(file);
     } catch (error) {
       console.log(error);
