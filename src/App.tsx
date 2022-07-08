@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { Buffer } from 'buffer';
 
-import crypto from 'crypto'
+import crypto from 'crypto-js';
 
 import axios from 'axios';
 
@@ -49,20 +49,20 @@ function App() {
       const decoder = new TextDecoder();
       const queuingStrategy = new CountQueuingStrategy({ highWaterMark: 1 });
       const iv = Buffer.alloc(16, 0);
-      const decipher = crypto.createDecipheriv('aes-256-ccm', FIXIT_FILE_KEY, iv);
+      
       const writableStream = new WritableStream({
         write: (chunk) => {
-          console.log(chunk);
+          const bytes  = crypto.AES.decrypt(chunk, FIXIT_FILE_KEY);
+          const decryptedData = bytes.toString(crypto.enc.Utf8);
+          console.log(decryptedData); 
         },
       });
 
       const fileStream = await file
         .stream()
         .pipeThrough(new TextDecoderStream())
-        .pipeThrough(decipher)
         .pipeTo(writableStream);
 
-      console.log(fileStream);
     } catch (error) {
       console.log(error)
     }
