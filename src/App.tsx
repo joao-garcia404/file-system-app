@@ -46,14 +46,14 @@ function App() {
       const file = await fileHandle.getFile();
       const filePath = await dirHandle.resolve(fileHandle);
 
-      const decoder = new TextDecoder();
-      const queuingStrategy = new CountQueuingStrategy({ highWaterMark: 1 });
+      const secret_key = crypto.PBKDF2(FIXIT_FILE_KEY, 'salt', { keySize: 24 });
       const iv = Buffer.alloc(16, 0);
       
       const writableStream = new WritableStream({
         write: (chunk) => {
-          const bytes  = crypto.AES.decrypt(chunk, FIXIT_FILE_KEY);
+          const bytes = crypto.AES.decrypt(chunk, secret_key);
           const decryptedData = bytes.toString(crypto.enc.Utf8);
+
           console.log(decryptedData); 
         },
       });
