@@ -108,6 +108,10 @@ function App() {
           const ciphertext = aesEncryptor.process(chunk)
           controller.enqueue(ciphertext.toString(crypto.enc.Base64))
           console.log(ciphertext.toString(crypto.enc.Base64))
+        },
+        flush: (controller) => {
+          const ciphertext = aesEncryptor.finalize()          
+          controller.enqueue(ciphertext.toString(crypto.enc.Base64))
         }
       });
 
@@ -129,21 +133,25 @@ function App() {
 
       const decoderTransform = new TransformStream({
         transform: (chunk, controller) => {
-          console.log(chunk)
           const ciphertext = aesDecryptor.process(chunk)
+          controller.enqueue(ciphertext)
+        },
+        flush: (controller) => {
+          const ciphertext = aesDecryptor.finalize()          
           controller.enqueue(ciphertext)
         }
       });
 
       const writableStream = new WritableStream({
         write: (chunk) => {
+          console.log(chunk)
           console.log(chunk.toString(crypto.enc.Utf8)); 
         },
       });
 
       await file
         .stream()
-        .pipeThrough(new TextDecoderStream())
+        .pipeThrough(new TextDecoderStream("x-user-defined"))
         .pipeThrough(decoderTransform)
         .pipeTo(writableStream);
 
