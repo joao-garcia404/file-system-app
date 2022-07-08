@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react'
 
+import { Buffer } from 'buffer';
+
+import crypto from 'crypto'
+
 import axios from 'axios';
 
-const FILE_LINK = 'https://plin-condominios.s3.sa-east-1.amazonaws.com/44f0f06be281c605c7af2ed65cec48e1-RINGFIX_AMOSTRA.gcode'
+// const FILE_LINK = 'https://plin-condominios.s3.sa-east-1.amazonaws.com/44f0f06be281c605c7af2ed65cec48e1-RINGFIX_AMOSTRA.gcode'
+const FILE_LINK = 'https://test-plin-condominiums-bucket.s3.sa-east-1.amazonaws.com/88f9e85aa462348f42b2a3ef9f3eced5-00c111b282be_RINGFIX_RINGFIX_M.fixit'
+const FIXIT_FILE_KEY = '7F24D27FAD171AF2';
 
 function App() {
   async function verifyDiskSpace() {
@@ -35,20 +41,26 @@ function App() {
       const root = await navigator.storage.getDirectory();
 
       const dirHandle = await root.getDirectoryHandle('tmpFixitFolder', { create: false });
-      const fileHandle = await dirHandle.getFileHandle('fixitgcode.gcode', { create: false });
+      const fileHandle = await dirHandle.getFileHandle('ringfixcrypto.fixit', { create: false });
 
       const file = await fileHandle.getFile();
       const filePath = await dirHandle.resolve(fileHandle);
 
       const decoder = new TextDecoder();
       const queuingStrategy = new CountQueuingStrategy({ highWaterMark: 1 });
+      const iv = Buffer.alloc(16, 0);
+      const decipher = crypto.createDecipheriv('aes-256-ccm', FIXIT_FILE_KEY, iv);
       const writableStream = new WritableStream({
         write: (chunk) => {
           console.log(chunk);
         },
       });
 
-      const fileStream = file.stream().pipeThrough(new TextDecoderStream()).pipeTo(writableStream);
+      const fileStream = await file
+        .stream()
+        .pipeThrough(new TextDecoderStream())
+        .pipeThrough(decipher)
+        .pipeTo(writableStream);
 
       console.log(fileStream);
     } catch (error) {
@@ -61,7 +73,7 @@ function App() {
       const root = await navigator.storage.getDirectory();
 
       const dirHandle = await root.getDirectoryHandle('tmpFixitFolder', { create: true });
-      const fileHandle = await dirHandle.getFileHandle('fixitgcode.gcode', { create: true });
+      const fileHandle = await dirHandle.getFileHandle('ringfixcrypto.fixit', { create: true });
 
       const writable = await fileHandle.createWritable();
       const response = await fetch(FILE_LINK);
