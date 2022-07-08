@@ -47,15 +47,22 @@ function App() {
       const filePath = await dirHandle.resolve(fileHandle);
 
       const secret_key = crypto.PBKDF2(FIXIT_FILE_KEY, 'salt', { keySize: 24 });
-      const iv = Buffer.alloc(16, 0);
-      
+      const buffer = Buffer.alloc(16, 0);
+      const iv = crypto.enc.Hex.parse(buffer.toString());
+      const aesDecryptor = crypto.algo.AES.createDecryptor(secret_key, { iv: iv });
+
       const writableStream = new WritableStream({
         write: (chunk) => {
-          const bytes = crypto.AES.decrypt(chunk, secret_key);
-          const decryptedData = bytes.toString(crypto.enc.Utf8);
+          const bytes = aesDecryptor.process(chunk);
+          console.log(bytes);
 
+          const decryptedData = bytes.toString(crypto.enc.Utf8);
           console.log(decryptedData); 
         },
+        close: () => {
+          aesDecryptor.finalize();
+        },
+
       });
 
       const fileStream = await file
