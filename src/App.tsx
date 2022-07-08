@@ -11,6 +11,9 @@ const FILE_LINK = 'https://test-plin-condominiums-bucket.s3.sa-east-1.amazonaws.
 const FIXIT_FILE_KEY = '7F24D27FAD171AF2';
 
 function App() {
+  var key = crypto.enc.Hex.parse("000102030405060708090a0b0c0d0e0f");
+  var iv = crypto.enc.Hex.parse("101112131415161718191a1b1c1d1e1f");
+
   async function verifyDiskSpace() {
     if (navigator.storage && navigator.storage.estimate) {
       const quota = await navigator.storage.estimate();
@@ -92,38 +95,26 @@ function App() {
   }
 
   async function cryptFile() {
-    try {
       const root = await navigator.storage.getDirectory();
       const dirHandle = await root.getDirectoryHandle('tmpFixitFolder', { create: true });
       const fileHandle = await dirHandle.getFileHandle('ringClear.fixit', { create: true });
       const writable = await fileHandle.createWritable();
       const response = await fetch(FILE_CLEAR_LINK);
-    
-      await response.body?.pipeTo(writable);
-      const file = await fileHandle.getFile();
 
-      const writableStream = new WritableStream({
-        write: (chunk) => {
-          const ciphertext = crypto.AES.encrypt(chunk, FIXIT_FILE_KEY).toString();
+      var aesEncryptor = crypto.algo.AES.createEncryptor(key, { iv: iv });
 
-          // const bytes  = crypto.AES.decrypt(ciphertext, FIXIT_FILE_KEY);
-          // const originalText = bytes.toString(crypto.enc.Utf8);
-
-          // console.log(ciphertext);
-          // console.log(originalText);
-        },
+      const encoderTransform = new TransformStream({
+        transform: (chunk, controller) => {
+          const ciphertext = aesEncryptor.process(chunk)
+          controller.enqueue(ciphertext.toString(crypto.enc.Base64))
+          console.log(ciphertext.toString(crypto.enc.Base64))
+        }
       });
 
-      await file
-        .stream()
-        .pipeThrough(new TextDecoderStream())
-        .pipeTo(writableStream);
-      
-      console.log(file);
-      
-    } catch (error) {
-      console.log(error);
-    }
+      await response.body
+        ?.pipeThrough(new TextDecoderStream())
+        ?.pipeThrough(encoderTransform)
+        .pipeTo(writable);
   }
 
   async function decryptFile() {
@@ -134,23 +125,26 @@ function App() {
 
       const file = await fileHandle.getFile();
 
+      var aesDecryptor = crypto.algo.AES.createDecryptor(key, { iv: iv });
+
+      const decoderTransform = new TransformStream({
+        transform: (chunk, controller) => {
+          console.log(chunk)
+          const ciphertext = aesDecryptor.process(chunk)
+          controller.enqueue(ciphertext)
+        }
+      });
+
       const writableStream = new WritableStream({
         write: (chunk) => {
-          // const ciphertext = crypto.AES.encrypt(chunk, FIXIT_FILE_KEY).toString();
-
-          console.log(chunk);
-
-          // const bytes  = crypto.AES.decrypt(ciphertext, FIXIT_FILE_KEY);
-          // const originalText = bytes.toString(crypto.enc.Utf8);
-
-          // console.log(ciphertext);
-          // console.log(originalText);
+          console.log(chunk.toString(crypto.enc.Utf8)); 
         },
       });
 
       await file
         .stream()
         .pipeThrough(new TextDecoderStream())
+        .pipeThrough(decoderTransform)
         .pipeTo(writableStream);
 
     } catch (error) {
