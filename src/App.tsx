@@ -97,10 +97,10 @@ function App() {
   async function cryptFile() {
       const root = await navigator.storage.getDirectory();
       const dirHandle = await root.getDirectoryHandle('tmpFixitFolder', { create: true });
-      const fileHandle = await dirHandle.getFileHandle('ringClear.fixit', { create: true });
+      const fileHandle = await dirHandle.getFileHandle('ringClearcrypted.gcode', { create: true });
       const writable = await fileHandle.createWritable();
       const response = await fetch(FILE_CLEAR_LINK);
-
+    
       var aesEncryptor = crypto.algo.AES.createEncryptor(key, { iv: iv });
 
       const encoderTransform = new TransformStream({
@@ -125,11 +125,13 @@ function App() {
     try {
       const root = await navigator.storage.getDirectory();
       const dirHandle = await root.getDirectoryHandle('tmpFixitFolder', { create: false });
-      const fileHandle = await dirHandle.getFileHandle('ringClear.fixit', { create: false });
+      const fileHandle = await dirHandle.getFileHandle('ringClearcrypted.gcode', { create: false });
 
       const file = await fileHandle.getFile();
 
       var aesDecryptor = crypto.algo.AES.createDecryptor(key, { iv: iv });
+
+      const wordArray = crypto.lib.WordArray.create();
 
       const decoderTransform = new TransformStream({
         transform: (chunk, controller) => {
@@ -144,8 +146,10 @@ function App() {
 
       const writableStream = new WritableStream({
         write: (chunk) => {
-          console.log(chunk)
-          console.log(chunk.toString(crypto.enc.Utf8)); 
+          // console.log(chunk)
+          // console.log(chunk.toString(crypto.enc.Base64));
+
+          wordArray.concat(chunk);
         },
       });
 
@@ -154,7 +158,10 @@ function App() {
         .pipeThrough(new TextDecoderStream("x-user-defined"))
         .pipeThrough(decoderTransform)
         .pipeTo(writableStream);
-
+      
+      console.log(wordArray.toString(crypto.enc.Base64));
+      console.log(wordArray.toString(crypto.enc.Utf8));
+      
     } catch (error) {
       console.log(error);
     }
