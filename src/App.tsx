@@ -11,10 +11,11 @@ const FIXIT_FILE_KEY = '7F24D27FAD171AF2';
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-const iv = crypto.getRandomValues(new Uint8Array(16));
-const key = crypto.getRandomValues(new Uint8Array(16));
+// const iv = crypto.getRandomValues(new Uint8Array(16));
+const algorithm = 'AES-CTR';
+const iv = encoder.encode("1011121314151617");
 const key_encoded = await crypto.subtle.importKey(
-  "raw", key.buffer, 'AES-CTR', false, ["encrypt", "decrypt"]
+  "raw", encoder.encode(FIXIT_FILE_KEY), algorithm, false, ["encrypt", "decrypt"]
 );
 
 function App() {
@@ -145,7 +146,7 @@ function App() {
           const encodedChunk = encoder.encode(chunk);
           const cipherText = await crypto.subtle.encrypt(
             {
-              name: 'AES-CTR',
+              name: algorithm,
               length: 128,
               counter: iv,
             },
@@ -182,12 +183,12 @@ function App() {
         transform: async (chunk, controller) => {
           const decryptedChunk = await crypto.subtle.decrypt(
             {
-              name: 'AES-CTR',
+              name: algorithm,
               length: 128,
               counter: iv,
             },
             key_encoded,
-            encoder.encode(chunk),
+            chunk,
           );
 
           controller.enqueue(decryptedChunk)
@@ -204,7 +205,6 @@ function App() {
 
       await file
         .stream()
-        .pipeThrough(new TextDecoderStream("x-user-defined"))
         .pipeThrough(decoderTransform)
         .pipeTo(writableStream);
 
