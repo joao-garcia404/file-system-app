@@ -148,7 +148,7 @@ function App() {
           const cipherText = await crypto.subtle.encrypt(
             {
               name: algorithm,
-              length: 128,
+              length: 64,
               counter: iv,
             },
             key_encoded,
@@ -200,7 +200,7 @@ function App() {
           const decryptedChunk = await crypto.subtle.decrypt(
             {
               name: algorithm,
-              length: 128,
+              length: 64,
               counter: iv,
             },
             key_encoded,
