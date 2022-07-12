@@ -5,6 +5,7 @@ import { Buffer } from 'buffer';
 import axios from 'axios';
 import LineBreakTransformer from './utils/lineBreakTransformer';
 
+const TEXT_FILE_LINK = 'https://test-plin-condominiums-bucket.s3.sa-east-1.amazonaws.com/dd6759b095b209b58b5eb54f5dc0e366-texto-teste.docx'
 const FILE_CLEAR_LINK = 'https://plin-condominios.s3.sa-east-1.amazonaws.com/44f0f06be281c605c7af2ed65cec48e1-RINGFIX_AMOSTRA.gcode'
 const FILE_LINK = 'https://test-plin-condominiums-bucket.s3.sa-east-1.amazonaws.com/88f9e85aa462348f42b2a3ef9f3eced5-00c111b282be_RINGFIX_RINGFIX_M.fixit'
 const FIXIT_FILE_KEY = '7F24D27FAD171AF2';
@@ -92,10 +93,10 @@ function App() {
       const root = await navigator.storage.getDirectory();
 
       const dirHandle = await root.getDirectoryHandle('tmpFixitFolder', { create: true });
-      const fileHandle = await dirHandle.getFileHandle('ringfixcrypto.fixit', { create: true });
+      const fileHandle = await dirHandle.getFileHandle('ringClearcrypted.gcode', { create: true });
 
       const writable = await fileHandle.createWritable();
-      const response = await fetch(FILE_LINK);
+      const response = await fetch(FILE_CLEAR_LINK);
      
       await response.body?.pipeTo(writable);
     } catch (error) {
@@ -156,11 +157,28 @@ function App() {
           )
 
           controller.enqueue(cipherText);
-          controller.enqueue(encoder.encode("\r\n"))
-          console.log(cipherText)
+          // controller.enqueue(encoder.encode("\r\n"))
         },
         flush: (controller) => {
         }
+      });
+
+      const decoderTransform = new TransformStream({
+        transform: async (chunk, controller) => {
+          // const encodedChunk = encoder.encode(chunk);
+
+          const cipherText = await crypto.subtle.decrypt(
+            {
+              name: algorithm,
+              length: 64,
+              counter: iv,
+            },
+            key_encoded,
+            chunk
+          )
+          
+          controller.enqueue(cipherText);
+        },
       });
 
 
@@ -172,6 +190,7 @@ function App() {
           )
         )
         ?.pipeThrough(encoderTransform)
+        // ?.pipeThrough(decoderTransform)
         .pipeTo(writable);
       
       const file = await fileHandle.getFile();
@@ -195,27 +214,24 @@ function App() {
       const fileHandle = await dirHandle.getFileHandle('ringClearcrypted.gcode', { create: false });
       const file = await fileHandle.getFile();
 
+      const newDecryptFile = await dirHandle.getFileHandle('ringDecypted.gcode', { create: true });
+      const writable = await newDecryptFile.createWritable();
+
       const decoderTransform = new TransformStream({
         transform: async (chunk, controller) => {
-          const decryptedChunk = await crypto.subtle.decrypt(
+          const encodedChunk = encoder.encode(chunk);
+
+          const cipherText = await crypto.subtle.decrypt(
             {
               name: algorithm,
               length: 64,
               counter: iv,
             },
             key_encoded,
-            encoder.encode(chunk),
-          );
-
-          controller.enqueue(decryptedChunk)
-        },
-        flush: (controller) => {
-        }
-      });
-
-      const writableStream = new WritableStream({
-        write: (chunk) => {
-          console.log(decoder.decode(chunk));
+            encodedChunk
+          )
+          
+          controller.enqueue(cipherText);
         },
       });
 
@@ -228,8 +244,17 @@ function App() {
           )
         )
         .pipeThrough(decoderTransform)
-        .pipeTo(writableStream);
-
+        .pipeTo(writable)
+      
+      
+        const decrypted = await newDecryptFile.getFile();
+        const fileStream = await decrypted
+          .stream()
+          .pipeThrough(new TextDecoderStream())
+          .getReader()
+          .read();
+  
+        console.log(fileStream.value);
     } catch (error) {
       console.log(error);
     }
