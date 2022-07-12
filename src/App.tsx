@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Buffer } from 'buffer';
 
 import axios from 'axios';
+import LineBreakTransformer from './utils/lineBreakTransformer';
 
 const FILE_CLEAR_LINK = 'https://plin-condominios.s3.sa-east-1.amazonaws.com/44f0f06be281c605c7af2ed65cec48e1-RINGFIX_AMOSTRA.gcode'
 const FILE_LINK = 'https://test-plin-condominiums-bucket.s3.sa-east-1.amazonaws.com/88f9e85aa462348f42b2a3ef9f3eced5-00c111b282be_RINGFIX_RINGFIX_M.fixit'
@@ -164,8 +165,22 @@ function App() {
 
       await response.body
         ?.pipeThrough(new TextDecoderStream())
+        ?.pipeThrough(
+          new TransformStream(
+            new LineBreakTransformer()
+          )
+        )
         ?.pipeThrough(encoderTransform)
         .pipeTo(writable);
+      
+      const file = await fileHandle.getFile();
+      const fileStream = await file
+        .stream()
+        .pipeThrough(new TextDecoderStream())
+        .getReader()
+        .read();
+
+      console.log(fileStream.value);
       
     } catch (error) {
       console.log(error);
@@ -205,6 +220,11 @@ function App() {
 
       await file
         .stream()
+        .pipeThrough(
+          new TransformStream(
+            new LineBreakTransformer()
+          )
+        )
         .pipeThrough(decoderTransform)
         .pipeTo(writableStream);
 
