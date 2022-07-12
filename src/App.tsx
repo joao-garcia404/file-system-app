@@ -155,7 +155,8 @@ function App() {
             encodedChunk
           )
 
-          controller.enqueue(cipherText)
+          controller.enqueue(cipherText);
+          controller.enqueue(encoder.encode("\r\n"))
           console.log(cipherText)
         },
         flush: (controller) => {
@@ -203,7 +204,7 @@ function App() {
               counter: iv,
             },
             key_encoded,
-            chunk,
+            encoder.encode(chunk),
           );
 
           controller.enqueue(decryptedChunk)
@@ -220,6 +221,7 @@ function App() {
 
       await file
         .stream()
+        .pipeThrough(new TextDecoderStream())
         .pipeThrough(
           new TransformStream(
             new LineBreakTransformer()
