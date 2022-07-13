@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { Buffer } from 'buffer';
+import { atob, Buffer } from 'buffer';
 
 import axios from 'axios';
 import LineBreakTransformer from './utils/lineBreakTransformer';
@@ -145,7 +145,7 @@ function App() {
 
       const encoderTransform = new TransformStream({
         transform: async (chunk, controller) => {
-          const encodedChunk = encoder.encode(chunk);
+          const decodedText = new TextDecoder().decode(chunk);
           const cipherText = await crypto.subtle.encrypt(
             {
               name: algorithm,
@@ -153,11 +153,12 @@ function App() {
               counter: iv,
             },
             key_encoded,
-            encodedChunk
+            Buffer.from(decodedText)
           )
 
+          //const base64Data = cipherText.toString('base64'));
+
           controller.enqueue(cipherText);
-          // controller.enqueue(encoder.encode("\r\n"))
         },
         flush: (controller) => {
         }
@@ -183,12 +184,6 @@ function App() {
 
 
       await response.body
-        ?.pipeThrough(new TextDecoderStream())
-        ?.pipeThrough(
-          new TransformStream(
-            new LineBreakTransformer()
-          )
-        )
         ?.pipeThrough(encoderTransform)
         // ?.pipeThrough(decoderTransform)
         .pipeTo(writable);
@@ -219,8 +214,6 @@ function App() {
 
       const decoderTransform = new TransformStream({
         transform: async (chunk, controller) => {
-          const encodedChunk = encoder.encode(chunk);
-
           const cipherText = await crypto.subtle.decrypt(
             {
               name: algorithm,
@@ -228,7 +221,7 @@ function App() {
               counter: iv,
             },
             key_encoded,
-            encodedChunk
+            Buffer.from(chunk, 'base64')
           )
           
           controller.enqueue(cipherText);
@@ -237,13 +230,8 @@ function App() {
 
       await file
         .stream()
-        .pipeThrough(new TextDecoderStream())
-        .pipeThrough(
-          new TransformStream(
-            new LineBreakTransformer()
-          )
-        )
         .pipeThrough(decoderTransform)
+        .pipeThrough(new TextDecoderStream())
         .pipeTo(writable)
       
       
