@@ -23,38 +23,38 @@ const algo = {
   length: 256
 }
 
+
+const algoCTR = {
+  name: 'AES-CTR',
+  length: 128
+}
+
 function App() {
-  const [masterPassword, setMasterPassword] = useState<CryptoKey>()
 
   useEffect(() => {
     if (FIXIT_FILE_KEY) {
-      crypto.subtle.importKey(
-        'raw',
-        new TextEncoder().encode(FIXIT_FILE_KEY),
-        { name: 'PBKDF2' },
-        false,
-        ['deriveKey']
-      ).then(key => {
-        console.log(key)
-        setMasterPassword(key)
-      })
+      
     }
   }, [FIXIT_FILE_KEY])
 
   async function getEncryptionKey() {
-    if (!masterPassword) {
-      throw new Error("No masterpassword")
-    }
+     const masterPassword = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(FIXIT_FILE_KEY),
+      { name: 'PBKDF2' },
+      false,
+      ['deriveKey']
+    )
 
     return await crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
-        salt: new TextEncoder().encode(FIXIT_FILE_KEY),
+        salt: new TextEncoder().encode(FIXIT_FILE_KEY.length + ""),
         hash: { name: 'SHA-1'},
         iterations: 1000,
       },
       masterPassword,
-      algo,
+      algoCTR,
       false,
       [ 'encrypt', 'decrypt' ]
     )
@@ -68,24 +68,23 @@ function App() {
       const writable = await fileHandle.createWritable({keepExistingData: false});
       const response = await fetch(FILE_CLEAR_LINK);
 
-      if (!masterPassword) {
-        return;
-      }
-
       const file = await fileHandle.getFile();
       console.log(file.name)
-      console.log(file.arrayBuffer())
+      // console.log(await file.arrayBuffer())
 
-      const blob = file.slice(0, 16)
+
+      const dataArray = await response.arrayBuffer()
+      // const blob = dataArray.slice(0, 4096)
+      console.log(new TextDecoder().decode(dataArray))
 
       const encryptedFile = await crypto.subtle.encrypt(
-        {...algo, iv: new TextEncoder().encode(file.name)},
+        {...algoCTR, counter: new TextEncoder().encode(file.name).slice(0, 16)},
         await getEncryptionKey(),
-        await blob.arrayBuffer(),
+        dataArray,
       )
 
       console.log(new TextDecoder().decode(encryptedFile))
-      await writable.write(new TextDecoder().decode(encryptedFile));
+      await writable.write(encryptedFile);
       await writable.close()
 
       const fileEncrypted = await fileHandle.getFile();
@@ -161,16 +160,13 @@ function App() {
       console.log(new TextDecoder().decode(await file.arrayBuffer()))
 
       console.log(file.name)
-        crypto.subtle.decrypt(
-          {...algo, iv: new TextEncoder().encode(file.name)},
+      const decryptedFile = await crypto.subtle.decrypt(
+          {...algoCTR, counter: new TextEncoder().encode(file.name).slice(0, 16)},
           await getEncryptionKey(),
           await file.arrayBuffer(),
-        ).then(decryptedFile => {
-          console.log(decryptedFile)
-        }).catch(err => {
-          console.log(err.code)
-          console.error(err)
-        })
+        )
+
+      console.log(new TextDecoder().decode(decryptedFile))
 /*
       return;
 
