@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react'
 
-import { atob, Buffer } from 'buffer';
-
 import axios from 'axios';
 import LineBreakTransformer from './utils/lineBreakTransformer';
 
@@ -20,120 +18,47 @@ const key_encoded = await crypto.subtle.importKey(
   "raw", encoder.encode(FIXIT_FILE_KEY), algorithm, false, ["encrypt", "decrypt"]
 );
 
+const algo = {
+  name: 'AES-GCM',
+  length: 256
+}
+
 function App() {
-  // var key = crypto.enc.Hex.parse("000102030405060708090a0b0c0d0e0f");
-  // var iv = crypto.enc.Hex.parse("101112131415161718191a1b1c1d1e1f");
+  const [masterPassword, setMasterPassword] = useState<CryptoKey>()
 
-  async function verifyDiskSpace() {
-    if (navigator.storage && navigator.storage.estimate) {
-      const quota = await navigator.storage.estimate();
-
-      if (quota?.quota && quota?.usage) {
-        const bytesAvailable = quota?.quota - quota?.usage
-        const percentageUsed = (quota.usage / quota.quota) * 100;
-        // quota.usage -> Number of bytes used.
-        // quota.quota -> Maximum number of bytes available.
-      }
+  useEffect(() => {
+    if (FIXIT_FILE_KEY) {
+      crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(FIXIT_FILE_KEY),
+        { name: 'PBKDF2' },
+        false,
+        ['deriveKey']
+      ).then(key => {
+        console.log(key)
+        setMasterPassword(key)
+      })
     }
-  }
+  }, [FIXIT_FILE_KEY])
 
-  async function handleDownloadFile() {
-    try {
-      const response = await axios.get(FILE_LINK, { responseType: 'blob' });
-      const fileUrl = window.URL.createObjectURL(new Blob([response.data]));
-
-      // handleSaveFile(response.data)
-
-    } catch (error) {
-      console.log(error);
+  async function getEncryptionKey() {
+    if (!masterPassword) {
+      throw new Error("No masterpassword")
     }
+
+    return await crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: new TextEncoder().encode(FIXIT_FILE_KEY),
+        hash: { name: 'SHA-1'},
+        iterations: 1000,
+      },
+      masterPassword,
+      algo,
+      false,
+      [ 'encrypt', 'decrypt' ]
+    )
   }
-
-  // async function handleGetFile() {
-  //   try {
-  //     const root = await navigator.storage.getDirectory();
-
-  //     const dirHandle = await root.getDirectoryHandle('tmpFixitFolder', { create: false });
-  //     const fileHandle = await dirHandle.getFileHandle('ringfixcrypto.fixit', { create: false });
-
-  //     const file = await fileHandle.getFile();
-  //     const filePath = await dirHandle.resolve(fileHandle);
-
-  //     const secret_key = crypto.PBKDF2(FIXIT_FILE_KEY, 'salt', { keySize: 24 });
-  //     const buffer = Buffer.alloc(16, 0);
-  //     const iv = crypto.enc.Hex.parse(buffer.toString());
-  //     const aesDecryptor = crypto.algo.AES.createDecryptor(secret_key, { iv: iv });
-
-  //     const writableStream = new WritableStream({
-  //       write: (chunk) => {
-  //         const bytes = aesDecryptor.process(chunk);
-  //         console.log(bytes);
-
-  //         const decryptedData = bytes.toString(crypto.enc.Utf8);
-  //         console.log(decryptedData); 
-  //       },
-  //       close: () => {
-  //         aesDecryptor.finalize();
-  //       },
-
-  //     });
-
-  //     const fileStream = await file
-  //       .stream()
-  //       .pipeThrough(new TextDecoderStream())
-  //       .pipeTo(writableStream);
-
-  //   } catch (error) {
-  //     console.log(error)
-  //   }
-  // }
-
-  async function handleSaveFile() {
-    try {
-      const root = await navigator.storage.getDirectory();
-
-      const dirHandle = await root.getDirectoryHandle('tmpFixitFolder', { create: true });
-      const fileHandle = await dirHandle.getFileHandle('ringClearcrypted.gcode', { create: true });
-
-      const writable = await fileHandle.createWritable();
-      const response = await fetch(FILE_CLEAR_LINK);
-     
-      await response.body?.pipeTo(writable);
-    } catch (error) {
-      console.log(error);
-    }
-  }
-
-  // async function cryptFile() {
-  //     const root = await navigator.storage.getDirectory();
-  //     const dirHandle = await root.getDirectoryHandle('tmpFixitFolder', { create: true });
-  //     const fileHandle = await dirHandle.getFileHandle('ringClearcrypted.gcode', { create: true });
-  //     const writable = await fileHandle.createWritable();
-  //     const response = await fetch(FILE_CLEAR_LINK);
-    
-  //     // var aesEncryptor = crypto.algo.AES.createEncryptor(key, { iv: iv });
-    
-  //     const encoderTransform = new TransformStream({
-  //       transform: async (chunk, controller) => {
-  //         const ciphertext = await crypto.subtle.encrypt({
-  //           name: 'AES-CBC',
-  //           iv,
-  //         }, key, ec.encode(plaintext));
-
-  //         controller.enqueue(ciphertext.toString(crypto.enc.Base64))
-  //         console.log(ciphertext.toString(crypto.enc.Base64))
-  //       },
-  //       flush: (controller) => {
-  //         const ciphertext = aesEncryptor.finalize()          
-  //         controller.enqueue(ciphertext.toString(crypto.enc.Base64))
-  //       }
-  //     });
-
-  //     await response.body
-  //       ?.pipeThrough(new TextDecoderStream())
-  //       ?.pipeThrough(encoderTransform)
-  //       .pipeTo(writable);
-  // }
 
   async function encryptFile() {
     try {
@@ -142,6 +67,32 @@ function App() {
       const fileHandle = await dirHandle.getFileHandle('ringClearcrypted.gcode', { create: true });
       const writable = await fileHandle.createWritable();
       const response = await fetch(FILE_CLEAR_LINK);
+
+      if (!masterPassword) {
+        return;
+      }
+
+      const file = await fileHandle.getFile();
+      console.log(file.name)
+      console.log(file.arrayBuffer())
+
+      const encryptedFile = await crypto.subtle.encrypt(
+        {...algo, iv: new TextEncoder().encode(file.name)},
+        await getEncryptionKey(),
+        await file.arrayBuffer(),
+      )
+
+      await writable.write(encryptedFile);
+
+      const fileStream = await file
+        .stream()
+        .pipeThrough(new TextDecoderStream())
+        .getReader()
+        .read();
+
+      console.log(fileStream.value);
+
+      return;
 
       const encoderTransform = new TransformStream({
         transform: async (chunk, controller) => {
@@ -188,15 +139,6 @@ function App() {
         // ?.pipeThrough(decoderTransform)
         .pipeTo(writable);
       
-      const file = await fileHandle.getFile();
-      const fileStream = await file
-        .stream()
-        .pipeThrough(new TextDecoderStream())
-        .getReader()
-        .read();
-
-      console.log(fileStream.value);
-      
     } catch (error) {
       console.log(error);
     }
@@ -211,6 +153,18 @@ function App() {
 
       const newDecryptFile = await dirHandle.getFileHandle('ringDecypted.gcode', { create: true });
       const writable = await newDecryptFile.createWritable();
+
+      console.log(file.name)
+
+      const decryptedFile = await crypto.subtle.decrypt(
+        {...algo, iv: new TextEncoder().encode(file.name)},
+        await getEncryptionKey(),
+        await file.arrayBuffer(),
+      )
+
+      console.log(decryptedFile)
+
+      return;
 
       const decoderTransform = new TransformStream({
         transform: async (chunk, controller) => {
@@ -297,16 +251,6 @@ function App() {
   return (
     <div className='app_container'>
       <h1>File system</h1>
-
-      <button type="button" className="file_download" onClick={handleSaveFile}>
-        Fazer dowload do arquivo
-      </button>
-
-      <button type="button" className="file_download" onClick={() => {
-        // handleGetFile()
-      }}>
-        Carregar arquivo
-      </button>
 
       <button type="button" className="file_download" onClick={() => {
         // cryptFile()
