@@ -65,7 +65,7 @@ function App() {
       const root = await navigator.storage.getDirectory();
       const dirHandle = await root.getDirectoryHandle('tmpFixitFolder', { create: true });
       const fileHandle = await dirHandle.getFileHandle('ringClearcrypted.gcode', { create: true });
-      const writable = await fileHandle.createWritable();
+      const writable = await fileHandle.createWritable({keepExistingData: false});
       const response = await fetch(FILE_CLEAR_LINK);
 
       if (!masterPassword) {
@@ -76,15 +76,20 @@ function App() {
       console.log(file.name)
       console.log(file.arrayBuffer())
 
+      const blob = file.slice(0, 16)
+
       const encryptedFile = await crypto.subtle.encrypt(
         {...algo, iv: new TextEncoder().encode(file.name)},
         await getEncryptionKey(),
-        await file.arrayBuffer(),
+        await blob.arrayBuffer(),
       )
 
-      await writable.write(encryptedFile);
+      console.log(new TextDecoder().decode(encryptedFile))
+      await writable.write(new TextDecoder().decode(encryptedFile));
+      await writable.close()
 
-      const fileStream = await file
+      const fileEncrypted = await fileHandle.getFile();
+      const fileStream = await fileEncrypted
         .stream()
         .pipeThrough(new TextDecoderStream())
         .getReader()
@@ -145,25 +150,28 @@ function App() {
   }
 
   async function decryptFile() {
-    try {
       const root = await navigator.storage.getDirectory();
       const dirHandle = await root.getDirectoryHandle('tmpFixitFolder', { create: false });
       const fileHandle = await dirHandle.getFileHandle('ringClearcrypted.gcode', { create: false });
       const file = await fileHandle.getFile();
 
-      const newDecryptFile = await dirHandle.getFileHandle('ringDecypted.gcode', { create: true });
-      const writable = await newDecryptFile.createWritable();
+      // const newDecryptFile = await dirHandle.getFileHandle('ringDecypted.gcode', { create: true });
+      // const writable = await newDecryptFile.createWritable();
+
+      console.log(new TextDecoder().decode(await file.arrayBuffer()))
 
       console.log(file.name)
-
-      const decryptedFile = await crypto.subtle.decrypt(
-        {...algo, iv: new TextEncoder().encode(file.name)},
-        await getEncryptionKey(),
-        await file.arrayBuffer(),
-      )
-
-      console.log(decryptedFile)
-
+        crypto.subtle.decrypt(
+          {...algo, iv: new TextEncoder().encode(file.name)},
+          await getEncryptionKey(),
+          await file.arrayBuffer(),
+        ).then(decryptedFile => {
+          console.log(decryptedFile)
+        }).catch(err => {
+          console.log(err.code)
+          console.error(err)
+        })
+/*
       return;
 
       const decoderTransform = new TransformStream({
@@ -196,10 +204,7 @@ function App() {
           .getReader()
           .read();
   
-        console.log(fileStream.value);
-    } catch (error) {
-      console.log(error);
-    }
+        console.log(fileStream.value);*/
   }
 
   // async function decryptFile() {
