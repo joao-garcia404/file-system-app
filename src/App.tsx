@@ -7,6 +7,7 @@ const TEXT_FILE_LINK = 'https://test-plin-condominiums-bucket.s3.sa-east-1.amazo
 const FILE_CLEAR_LINK = 'https://plin-condominios.s3.sa-east-1.amazonaws.com/44f0f06be281c605c7af2ed65cec48e1-RINGFIX_AMOSTRA.gcode'
 const FILE_LINK = 'https://test-plin-condominiums-bucket.s3.sa-east-1.amazonaws.com/88f9e85aa462348f42b2a3ef9f3eced5-00c111b282be_RINGFIX_RINGFIX_M.fixit'
 const FIXIT_FILE_KEY = '7F24D27FAD171AF2';
+const CHUNK_SIZE = 1024;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
