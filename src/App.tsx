@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 
 import axios from 'axios';
 import LineBreakTransformer from './utils/lineBreakTransformer';
+import ByteSliceTransformer from './utils/byteSliceTransformer';
+import EncoderTransformer from './utils/encoderTransformer';
+import DecoderTransformer from './utils/decoderTransformer';
 
 const TEXT_FILE_LINK = 'https://test-plin-condominiums-bucket.s3.sa-east-1.amazonaws.com/dd6759b095b209b58b5eb54f5dc0e366-texto-teste.docx'
 const FILE_CLEAR_LINK = 'https://plin-condominios.s3.sa-east-1.amazonaws.com/44f0f06be281c605c7af2ed65cec48e1-RINGFIX_AMOSTRA.gcode'
@@ -61,7 +64,7 @@ function App() {
     )
   }
 
-  async function encryptFile() {
+  async function encryptFileInteiro() {
     try {
       const root = await navigator.storage.getDirectory();
       const dirHandle = await root.getDirectoryHandle('tmpFixitFolder', { create: true });
@@ -96,159 +99,110 @@ function App() {
         .read();
 
       console.log(fileStream.value);
-
-      return;
-
-      const encoderTransform = new TransformStream({
-        transform: async (chunk, controller) => {
-          const decodedText = new TextDecoder().decode(chunk);
-          const cipherText = await crypto.subtle.encrypt(
-            {
-              name: algorithm,
-              length: 64,
-              counter: iv,
-            },
-            key_encoded,
-            Buffer.from(decodedText)
-          )
-
-          //const base64Data = cipherText.toString('base64'));
-
-          controller.enqueue(cipherText);
-        },
-        flush: (controller) => {
-        }
-      });
-
-      const decoderTransform = new TransformStream({
-        transform: async (chunk, controller) => {
-          // const encodedChunk = encoder.encode(chunk);
-
-          const cipherText = await crypto.subtle.decrypt(
-            {
-              name: algorithm,
-              length: 64,
-              counter: iv,
-            },
-            key_encoded,
-            chunk
-          )
-          
-          controller.enqueue(cipherText);
-        },
-      });
-
-
-      await response.body
-        ?.pipeThrough(encoderTransform)
-        // ?.pipeThrough(decoderTransform)
-        .pipeTo(writable);
       
     } catch (error) {
       console.log(error);
     }
   }
 
-  async function decryptFile() {
-      const root = await navigator.storage.getDirectory();
-      const dirHandle = await root.getDirectoryHandle('tmpFixitFolder', { create: false });
-      const fileHandle = await dirHandle.getFileHandle('ringClearcrypted.gcode', { create: false });
-      const file = await fileHandle.getFile();
 
-      // const newDecryptFile = await dirHandle.getFileHandle('ringDecypted.gcode', { create: true });
-      // const writable = await newDecryptFile.createWritable();
 
-      console.log(new TextDecoder().decode(await file.arrayBuffer()))
+  async function decryptFileInteiro() {
+    const root = await navigator.storage.getDirectory();
+    const dirHandle = await root.getDirectoryHandle('tmpFixitFolder', { create: false });
+    const fileHandle = await dirHandle.getFileHandle('ringClearcrypted.gcode', { create: false });
+    const file = await fileHandle.getFile();
 
-      console.log(file.name)
-      const decryptedFile = await crypto.subtle.decrypt(
-          {...algoCTR, counter: new TextEncoder().encode(file.name).slice(0, 16)},
-          await getEncryptionKey(),
-          await file.arrayBuffer(),
-        )
+    // const newDecryptFile = await dirHandle.getFileHandle('ringDecypted.gcode', { create: true });
+    // const writable = await newDecryptFile.createWritable();
 
-      console.log(new TextDecoder().decode(decryptedFile))
-/*
-      return;
+    console.log(new TextDecoder().decode(await file.arrayBuffer()))
 
-      const decoderTransform = new TransformStream({
-        transform: async (chunk, controller) => {
-          const cipherText = await crypto.subtle.decrypt(
-            {
-              name: algorithm,
-              length: 64,
-              counter: iv,
-            },
-            key_encoded,
-            Buffer.from(chunk, 'base64')
-          )
-          
-          controller.enqueue(cipherText);
-        },
-      });
+    console.log(file.name)
+    const decryptedFile = await crypto.subtle.decrypt(
+        {...algoCTR, counter: new TextEncoder().encode(file.name).slice(0, 16)},
+        await getEncryptionKey(),
+        await file.arrayBuffer(),
+      )
 
-      await file
-        .stream()
-        .pipeThrough(decoderTransform)
-        .pipeThrough(new TextDecoderStream())
-        .pipeTo(writable)
-      
-      
-        const decrypted = await newDecryptFile.getFile();
-        const fileStream = await decrypted
-          .stream()
-          .pipeThrough(new TextDecoderStream())
-          .getReader()
-          .read();
-  
-        console.log(fileStream.value);*/
+    console.log(new TextDecoder().decode(decryptedFile))
   }
 
-  // async function decryptFile() {
-  //   try {
-  //     const root = await navigator.storage.getDirectory();
-  //     const dirHandle = await root.getDirectoryHandle('tmpFixitFolder', { create: false });
-  //     const fileHandle = await dirHandle.getFileHandle('ringClearcrypted.gcode', { create: false });
 
-  //     const file = await fileHandle.getFile();
+  async function encryptFile() {
+    try {
+      const root = await navigator.storage.getDirectory();
+      const dirHandle = await root.getDirectoryHandle('tmpFixitFolder', { create: true });
+      const fileHandle = await dirHandle.getFileHandle('ringClearcrypted.gcode', { create: true });
+      const writable = await fileHandle.createWritable({keepExistingData: false});
+      const response = await fetch(FILE_CLEAR_LINK);
 
-  //     var aesDecryptor = crypto.algo.AES.createDecryptor(key, { iv: iv });
+      const file = await fileHandle.getFile();
+      console.log(file.name)
+      // console.log(await file.arrayBuffer())
 
-  //     const wordArray = crypto.lib.WordArray.create();
 
-  //     const decoderTransform = new TransformStream({
-  //       transform: (chunk, controller) => {
-  //         const ciphertext = aesDecryptor.process(chunk)
-  //         controller.enqueue(ciphertext)
-  //       },
-  //       flush: (controller) => {
-  //         const ciphertext = aesDecryptor.finalize()          
-  //         controller.enqueue(ciphertext)
-  //       }
-  //     });
+      //const dataArray = await response.arrayBuffer()
+      // const blob = dataArray.slice(0, 4096)
+      //console.log(new TextDecoder().decode(dataArray))
 
-  //     const writableStream = new WritableStream({
-  //       write: (chunk) => {
-  //         // console.log(chunk)
-  //         // console.log(chunk.toString(crypto.enc.Base64));
+      // await writable.write(encryptedFile);
+      // await writable.close()
 
-  //         // wordArray.concat(chunk);
-  //       },
-  //     });
 
-  //     await file
-  //       .stream()
-  //       .pipeThrough(new TextDecoderStream("x-user-defined"))
-  //       .pipeThrough(decoderTransform)
-  //       .pipeTo(writableStream);
+      const encoderTransform = new TransformStream({
+        transform: async (chunk, controller) => {
+          const encryptedFile = await crypto.subtle.encrypt(
+            {...algoCTR, counter: new TextEncoder().encode(file.name).slice(0, 16)},
+              await getEncryptionKey(),
+              chunk,
+            )
       
-  //     // console.log(wordArray.toString(crypto.enc.Base64));
-  //     // console.log(wordArray.toString(crypto.enc.Utf8));
+          console.log(new TextDecoder().decode(encryptedFile))
+            
+
+          //const base64Data = cipherText.toString('base64'));
+
+          controller.enqueue(encryptedFile);
+        },
+        flush: (controller) => {
+        }
+      });
+
+      await response.body
+        ?.pipeThrough(new TransformStream(new ByteSliceTransformer(CHUNK_SIZE)))
+        ?.pipeThrough(new TransformStream(new EncoderTransformer(file.name, algoCTR, await getEncryptionKey())))
+        // ?.pipeThrough(encoderTransform)
+        .pipeTo(writable);
       
-  //   } catch (error) {
-  //     console.log(error);
-  //   }
-  // }
+      const fileEncrypted = await fileHandle.getFile();
+      const fileStream = await fileEncrypted
+        .stream()
+        .pipeThrough(new TextDecoderStream())
+        .getReader()
+        .read();
+
+      console.log(fileStream.value);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async function decryptFile() {
+    const root = await navigator.storage.getDirectory();
+    const dirHandle = await root.getDirectoryHandle('tmpFixitFolder', { create: false });
+    const fileHandle = await dirHandle.getFileHandle('ringClearcrypted.gcode', { create: false });
+    const file = await fileHandle.getFile();
+    const writable = await fileHandle.createWritable();
+
+
+    await file
+      .stream()
+      ?.pipeThrough(new TransformStream(new ByteSliceTransformer(CHUNK_SIZE)))
+      ?.pipeThrough(new TransformStream(new DecoderTransformer(file.name, algoCTR, await getEncryptionKey())))
+      .pipeThrough(new TextDecoderStream())
+      .pipeTo(writable)
+  }
 
   return (
     <div className='app_container'>
